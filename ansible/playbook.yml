@@ -1,0 +1,194 @@
+# =============================================================
+# playbook.yml - Configuration du serveur web MediTrack Online
+#
+# Execution :   cd ansible && ansible-playbook playbook.yml
+# Idempotent :  peut etre relance sans effet de bord (2e passage = 0 changement)
+#
+# Etapes :
+#   1. Installation des paquets
+#   2. Gestion des utilisateurs et des droits
+#   3. Pare-feu UFW
+#   4. Installation et configuration de Nginx
+#   5. Deploiement des fichiers statiques
+#   6. Verification du service
+# =============================================================
+- name: MediTrack Online - configuration et securisation du serveur web
+  hosts: web
+  become: true
+  # Les informations systeme sont collectees APRES avoir attendu l'instance
+  gather_facts: false
+
+  pre_tasks:
+    - name: Attendre que l'instance soit joignable en SSH (demarrage EC2)
+      ansible.builtin.wait_for_connection:
+        timeout: 300
+
+    - name: Collecter les informations systeme
+      ansible.builtin.setup:
+
+  tasks:
+    # ---------------------------------------------------------
+    # 1. INSTALLATION DES PAQUETS
+    # ---------------------------------------------------------
+    - name: "[PAQUETS] Installer Nginx et UFW (cache apt mis a jour)"
+      ansible.builtin.apt:
+        name:
+          - nginx
+          - ufw
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+      tags: [paquets]
+
+    # ---------------------------------------------------------
+    # 2. UTILISATEURS ET DROITS
+    # ---------------------------------------------------------
+    - name: "[USERS] Creer le groupe d'administration {{ admin_group }}"
+      ansible.builtin.group:
+        name: "{{ admin_group }}"
+        state: present
+      tags: [users]
+
+    - name: "[USERS] Creer le compte d'administration nominatif {{ admin_user }}"
+      ansible.builtin.user:
+        name: "{{ admin_user }}"
+        groups: "{{ admin_group }}"
+        append: true
+        shell: /bin/bash
+        password: "!" # compte sans mot de passe : connexion par cle SSH uniquement
+        state: present
+      tags: [users]
+
+    - name: "[USERS] Autoriser la cle SSH publique de l'administrateur"
+      ansible.posix.authorized_key:
+        user: "{{ admin_user }}"
+        key: "{{ lookup('ansible.builtin.file', admin_pubkey_path | expanduser) }}"
+        state: present
+      tags: [users]
+
+    - name: "[USERS] Donner les droits sudo au groupe {{ admin_group }} (fichier valide par visudo)"
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ admin_group }}"
+        content: "%{{ admin_group }} ALL=(ALL) NOPASSWD:ALL\n"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: "visudo -cf %s"
+      tags: [users]
+
+    # ---------------------------------------------------------
+    # 3. PARE-FEU UFW
+    # ---------------------------------------------------------
+    - name: "[UFW] Autoriser SSH (avant activation, pour ne pas perdre l'acces)"
+      community.general.ufw:
+        rule: allow
+        port: "22"
+        proto: tcp
+        comment: "SSH administration"
+      tags: [ufw]
+
+    - name: "[UFW] Autoriser HTTP (Nginx)"
+      community.general.ufw:
+        rule: allow
+        port: "80"
+        proto: tcp
+        comment: "HTTP Nginx"
+      tags: [ufw]
+
+    - name: "[UFW] Politique par defaut : tout refuser en entree"
+      community.general.ufw:
+        default: deny
+        direction: incoming
+      tags: [ufw]
+
+    - name: "[UFW] Activer le pare-feu"
+      community.general.ufw:
+        state: enabled
+      tags: [ufw]
+
+    # ---------------------------------------------------------
+    # 4. NGINX
+    # ---------------------------------------------------------
+    - name: "[NGINX] Desactiver le site par defaut"
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+      notify: Recharger Nginx
+      tags: [nginx]
+
+    - name: "[NGINX] Deployer la configuration du site MediTrack"
+      ansible.builtin.template:
+        src: templates/meditrack.conf.j2
+        dest: /etc/nginx/sites-available/meditrack.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Recharger Nginx
+      tags: [nginx]
+
+    - name: "[NGINX] Activer le site MediTrack"
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/meditrack.conf
+        dest: /etc/nginx/sites-enabled/meditrack.conf
+        state: link
+      notify: Recharger Nginx
+      tags: [nginx]
+
+    # ---------------------------------------------------------
+    # 5. DEPLOIEMENT DES FICHIERS STATIQUES
+    # ---------------------------------------------------------
+    - name: "[SITE] Creer le repertoire du site {{ web_root }}"
+      ansible.builtin.file:
+        path: "{{ web_root }}"
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: "0755"
+      tags: [site]
+
+    - name: "[SITE] Copier les fichiers HTML, CSS et images"
+      ansible.builtin.copy:
+        src: "{{ site_src }}"
+        dest: "{{ web_root }}/"
+        owner: www-data
+        group: www-data
+        mode: "u=rwX,g=rX,o=rX"
+      tags: [site]
+
+    - name: "[NGINX] Verifier la syntaxe de la configuration Nginx"
+      ansible.builtin.command: nginx -t
+      changed_when: false
+      tags: [nginx]
+
+    - name: "[NGINX] Demarrer Nginx et l'activer au demarrage"
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+      tags: [nginx]
+
+  handlers:
+    - name: Recharger Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
+
+  post_tasks:
+    # ---------------------------------------------------------
+    # 6. VERIFICATION
+    # ---------------------------------------------------------
+    - name: "[TEST] Appliquer les changements en attente avant le test"
+      ansible.builtin.meta: flush_handlers
+
+    - name: "[TEST] Verifier que le site repond (HTTP 200)"
+      ansible.builtin.uri:
+        url: http://localhost/
+        return_content: true
+        status_code: 200
+      register: test_site
+      tags: [test]
+
+    - name: "[TEST] Resultat"
+      ansible.builtin.debug:
+        msg: "Site MediTrack Online operationnel sur http://{{ ansible_host }} (HTTP {{ test_site.status }})"
+      tags: [test]

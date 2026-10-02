@@ -1,0 +1,14 @@
+# =============================================================
+# Variables du groupe "web" (serveur(s) web MediTrack)
+# =============================================================
+
+# Dossier publie par Nginx
+web_root: /var/www/meditrack
+
+# Fichiers du site statique (dossier site/ a la racine du depot)
+site_src: "{{ playbook_dir }}/../site/"
+
+# Compte d'administration nominatif (remplace l'usage du compte par defaut)
+admin_group: webadmins
+admin_user: meditrack-admin
+admin_pubkey_path: "~/.ssh/meditrack.pub"

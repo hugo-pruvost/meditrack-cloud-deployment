@@ -1,0 +1,7 @@
+# =============================================================
+# Modele de fichier de variables.
+# 1. Copier ce fichier :  cp terraform.tfvars.example terraform.tfvars
+# 2. Renseigner votre IP publique (curl -s https://checkip.amazonaws.com)
+# terraform.tfvars est exclu de Git (.gitignore).
+# =============================================================
+admin_ip_cidr = "203.0.113.10/32"

@@ -1,0 +1,23 @@
+# =============================================================
+# {{ ansible_managed }}
+# Site Nginx MediTrack Online
+# =============================================================
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+
+    # Dossier contenant les fichiers du site
+    root {{ web_root }};
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    # Page d'erreur personnalisee
+    error_page 404 /error.html;
+
+    access_log /var/log/nginx/meditrack_access.log;
+    error_log  /var/log/nginx/meditrack_error.log;
+}

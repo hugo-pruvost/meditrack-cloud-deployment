@@ -1,0 +1,53 @@
+# =============================================================
+# .gitignore - MediTrack Cloud Deployment
+# Objectif : ne JAMAIS publier de secret dans ce depot public.
+# =============================================================
+
+# --- Terraform ---
+# Dossier des providers telecharges (lourd, regenere par terraform init)
+.terraform/
+# Etat Terraform : contient les identifiants des ressources et
+# potentiellement des donnees sensibles -> jamais dans Git
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+# Plans sauvegardes (peuvent contenir des valeurs sensibles)
+*.tfplan
+tfplan
+# Variables locales (IP personnelle, chemins locaux...).
+# Un modele sans secret est fourni : terraform.tfvars.example
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# --- Secrets et identifiants ---
+# Cles SSH privees et certificats
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+meditrack
+# Export des cles d'acces AWS telecharge depuis la console
+*.csv
+.aws/
+credentials
+.env
+.env.*
+
+# --- Ansible ---
+*.retry
+.vault_pass*
+
+# --- Systeme / editeurs ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
