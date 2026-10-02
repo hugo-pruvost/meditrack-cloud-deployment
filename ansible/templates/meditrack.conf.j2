@@ -15,9 +15,6 @@ server {
         try_files $uri $uri/ =404;
     }
 
-    # Page d'erreur personnalisee
-    error_page 404 /error.html;
-
     access_log /var/log/nginx/meditrack_access.log;
     error_log  /var/log/nginx/meditrack_error.log;
 }
