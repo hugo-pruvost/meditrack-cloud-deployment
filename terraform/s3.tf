@@ -8,14 +8,9 @@ locals {
 
   mime_types = {
     ".html" = "text/html; charset=utf-8"
-    ".css"  = "text/css; charset=utf-8"
-    ".js"   = "application/javascript"
     ".svg"  = "image/svg+xml"
     ".png"  = "image/png"
     ".jpg"  = "image/jpeg"
-    ".jpeg" = "image/jpeg"
-    ".ico"  = "image/x-icon"
-    ".txt"  = "text/plain; charset=utf-8"
   }
 }
 
@@ -36,17 +31,13 @@ resource "aws_s3_bucket_public_access_block" "site" {
   restrict_public_buckets = true
 }
 
-# Configuration "site web statique" : page d'accueil et page d'erreur.
+# Configuration "site web statique" : page d'accueil.
 # Le site est diffuse par CloudFront (origine S3 privee + OAC) ; le point de terminaison web public de S3 reste ferme par le blocage d'acces public.
 resource "aws_s3_bucket_website_configuration" "site" {
   bucket = aws_s3_bucket.site.id
 
   index_document {
     suffix = "index.html"
-  }
-
-  error_document {
-    key = "error.html"
   }
 }
 

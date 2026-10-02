@@ -58,7 +58,7 @@ resource "aws_route_table_association" "public" {
 # --- Groupe de securite du serveur web (pare-feu AWS) ---
 resource "aws_security_group" "web" {
   name        = "${var.project_name}-web-sg"
-  description = "Serveur web MediTrack : HTTP public, SSH reserve a l'administrateur"
+  description = "Serveur web MediTrack - HTTP public, SSH reserve a l administrateur"
   vpc_id      = aws_vpc.main.id
 
   tags = {

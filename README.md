@@ -44,7 +44,7 @@ flowchart LR
 │   ├── playbook.yml      # Paquets, utilisateurs, UFW, Nginx, site
 │   ├── group_vars/web.yml
 │   └── templates/        # Configuration Nginx
-├── site/                 # Site statique MediTrack Online (HTML / CSS)
+├── site/                 # Site statique MediTrack Online (index.html + logo)
 └── iam/policy-meditrack.json  # Politique IAM à moindre privilège
 ```
 
